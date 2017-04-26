@@ -1,18 +1,26 @@
 package app.com.example.ricard.moviesv2;
 
+import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.GridView;
+import android.widget.ImageView;
 import android.widget.Toast;
 
 import org.json.JSONArray;
@@ -39,12 +47,14 @@ public class posterGrid extends Fragment {
     private ImageAdapter mMoviesAdapter;
     private final String LOG_TAG = posterGrid.class.getSimpleName();
     private int numMoviesdef;
+    private ImageView imageView;
+    private String[][] mMovieInformation;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
 
-        View rootView = inflater.inflate(R.layout.fragment_main, container, false);
+        final View rootView = inflater.inflate(R.layout.fragment_main, container, false);
 
 
 
@@ -61,6 +71,18 @@ public class posterGrid extends Fragment {
                                     int position, long id) {
                 Toast.makeText(getContext(), "" + position,
                         Toast.LENGTH_SHORT).show();
+
+
+                Intent detailsViewAct = new Intent(getActivity(), detailsActivity.class).putExtra(Intent.EXTRA_TEXT, mMovieInformation[0][position])
+                                                                                        .putExtra("MovieTitle", mMovieInformation[1][position])
+                                                                                        .putExtra("MovieRating", mMovieInformation[2][position])
+                                                                                        .putExtra("MovieReleaseDate", mMovieInformation[3][position])
+                                                                                        .putExtra("MovieSynopsis", mMovieInformation[4][position]);
+                startActivity(detailsViewAct);
+
+                //mMoviesAdapter.mThumbIds[position] = "http://i.imgur.com/DvpvklR.png";
+                //mMoviesAdapter.notifyDataSetChanged();
+
             }
         });
 
@@ -77,10 +99,26 @@ public class posterGrid extends Fragment {
 
     }
 
+
+    public boolean isOnline() {
+        ConnectivityManager cm =
+                (ConnectivityManager) getActivity().getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo netInfo = cm.getActiveNetworkInfo();
+        return netInfo != null && netInfo.isConnectedOrConnecting();
+    }
+
     @Override
     public void onStart(){
         FetchMoviesTask moviesTask = new FetchMoviesTask();
-        moviesTask.execute();
+        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(getActivity());
+        String sortOrder = sharedPref.getString("Sort_by","popularity");
+
+        if(isOnline()) {
+            moviesTask.execute(sortOrder);
+        } else{
+            Toast.makeText(getContext(), "No internet connection!",
+                    Toast.LENGTH_LONG).show();
+        }
         super.onStart();
     }
 
@@ -88,18 +126,36 @@ public class posterGrid extends Fragment {
     @Override
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
         // Inflate the menu; this adds items to the action bar if it is present.
-        //inflater.inflate(R.menu.forecastfragment, menu);
+        inflater.inflate(R.menu.main, menu);
 
     }
 
-    public class FetchMoviesTask extends AsyncTask<String,Void,String[]> {
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle action bar item clicks here. The action bar will
+        // automatically handle clicks on the Home/Up button, so long
+        // as you specify a parent activity in AndroidManifest.xml.
+        int id = item.getItemId();
+
+        //noinspection SimplifiableIfStatement
+        switch(id) {
+            case R.id.action_settings:
+                Intent settingsViewAct = new Intent(getActivity(), SettingsActivity.class);
+                startActivity(settingsViewAct);
+                break;
+        }
+
+        return super.onOptionsItemSelected(item);
+    }
+
+    public class FetchMoviesTask extends AsyncTask<String,Void,String[][]> {
 
         private final String LOG_TAG = FetchMoviesTask.class.getSimpleName();
         private int movies = 100;
-        public String[] moviesInformationParsed;
+        public String[][] moviesInformationParsed;
 
         @Override
-        protected String[] doInBackground(String... params) {
+        protected String[][] doInBackground(String... params) {
 
             // These two need to be declared outside the try/catch
             // so that they can be closed in the finally block.
@@ -111,8 +167,10 @@ public class posterGrid extends Fragment {
 
             final String SCHEME = "https";
             final String AUTHORITY = "api.themoviedb.org";
-            final String SMODE = "movie";
-            final String TYPE = "popular";
+            final String SMODE1 = "discover";
+            final String SMODE2 = "movie";
+            final String SORT = "sort_by";
+            final String SORT_VALUE = params[0]+".desc";
             final String QUERY_TYPE = "query";
             final String QUERY_VALUE = "Jack+Reacher";
             final String APPID = "api_key";
@@ -128,13 +186,15 @@ public class posterGrid extends Fragment {
                 builder.scheme(SCHEME)
                         .authority(AUTHORITY)
                         .appendPath("3")
-                        .appendPath(SMODE)
-                        .appendPath(TYPE)
-                        .appendQueryParameter(APPID,APPID_VALUE);
+                        .appendPath(SMODE1)
+                        .appendPath(SMODE2)
+                        .appendQueryParameter(APPID,APPID_VALUE)
+                        .appendQueryParameter(SORT,SORT_VALUE);
+
                         //.appendQueryParameter(QUERY_TYPE,QUERY_VALUE);
 
                 String myUrlString = builder.build().toString();
-
+                Log.e(LOG_TAG, myUrlString);
                 URL url = new URL(myUrlString);
 
                 // Create the request to themoviedb, and open the connection
@@ -197,13 +257,14 @@ public class posterGrid extends Fragment {
         }
 
         @Override
-        protected void onPostExecute(String[] strings) {
+        protected void onPostExecute(String[][] strings) {
             if(strings != null) {
 
                 for(int i = 0; i < numMoviesdef; i++) {
-                    mMoviesAdapter.mThumbIds[i] = strings[i];
+                    mMoviesAdapter.mThumbIds[i] = strings[0][i];
                 }
                 mMoviesAdapter.notifyDataSetChanged();
+                mMovieInformation = strings;
 
 
 
@@ -214,18 +275,25 @@ public class posterGrid extends Fragment {
 
         }
 
-        private String[] getMovieDataFromJson(String forecastJsonStr, int numMovies)
+
+        //The results are saved in a string array
+        //String[0] contains the poster path
+        //String[1] contains the movie title
+        //String[2] contains the user rating
+        //String[3] contains the release date
+        //String[4] contains the synopsis
+
+        private String[][] getMovieDataFromJson(String forecastJsonStr, int numMovies)
                 throws JSONException {
 
             // These are the names of the JSON objects that need to be extracted.
 
             final String TMDB_RESULTS = "results";
             final String TMDB_POSTER_PATH = "poster_path";
-            final String OWM_ADULT = "adult";
-            final String OWM_TEMPERATURE = "temp";
-            final String OWM_MAX = "max";
-            final String OWM_MIN = "min";
-            final String OWM_DESCRIPTION = "main";
+            final String TMDB_ORIG_TITLE = "original_title";
+            final String TMDB_SYNOPSIS = "overview";
+            final String TMDB_USER_RATING = "vote_average";
+            final String TMDB_RELEASE_DATE = "release_date";
 
             JSONObject forecastJson = new JSONObject(forecastJsonStr);
             JSONArray moviesArray = forecastJson.getJSONArray(TMDB_RESULTS);
@@ -237,7 +305,7 @@ public class posterGrid extends Fragment {
             } else {
                 numMoviesdef = realnumbermovies;
             }
-            String[] resultStrs = new String[numMoviesdef];
+            String[][] resultStrs = new String[5][numMoviesdef];
             for(int i = 0; i < numMoviesdef; i++) {
                 // For now, using the format "Poster Image, title
                 //String posterPath;
@@ -265,7 +333,13 @@ public class posterGrid extends Fragment {
 
               //  double highlow[] = convertUnits(high,low);
              //   highAndLow = formatHighLows(highlow[0], highlow[1]);
-                resultStrs[i] = posterURL;
+
+
+                resultStrs[0][i] = posterURL;
+                resultStrs[1][i] = moviei.getString(TMDB_ORIG_TITLE);
+                resultStrs[2][i] = moviei.getString(TMDB_USER_RATING);
+                resultStrs[3][i] = moviei.getString(TMDB_RELEASE_DATE);
+                resultStrs[4][i] = moviei.getString(TMDB_SYNOPSIS);
             }
 
 

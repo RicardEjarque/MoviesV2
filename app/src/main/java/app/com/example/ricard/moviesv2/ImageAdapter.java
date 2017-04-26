@@ -1,7 +1,6 @@
 package app.com.example.ricard.moviesv2;
 
 import android.content.Context;
-import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
@@ -20,6 +19,8 @@ import java.util.Arrays;
 public class ImageAdapter extends BaseAdapter {
     private Context mContext;
     private final String LOG_TAG = posterGrid.class.getSimpleName();
+    // references to our images
+    String[] mThumbIds = stringArray();
 
 
     public ImageAdapter(Context c) {
@@ -31,34 +32,12 @@ public class ImageAdapter extends BaseAdapter {
     }
 
     public Object getItem(int position) {
-        return null;
+        return 0;
     }
 
     public long getItemId(int position) {
         return 0;
     }
-
-
-
-    //Create a new ImageView for each item referenced by the Adapter based on the input source
-    public View getViewBySource(String[] sourceURL) {
-        ImageView imageView;
-
-            // if it's not recycled, initialize some attributes
-            imageView = new ImageView(mContext);
-            imageView.setLayoutParams(new GridView.LayoutParams(300, 500));
-            imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
-            imageView.setPadding(8, 8, 8, 8);
-        Log.e(LOG_TAG, sourceURL[1]);
-        Picasso.with(mContext)
-                .load(sourceURL[1])
-                .into(imageView);
-        //imageView.setImageResource(mThumbIds[position]);
-        notifyDataSetChanged();
-        return imageView;
-    }
-
-
 
     // create a new ImageView for each item referenced by the Adapter
     public View getView(int position, View convertView, ViewGroup parent) {
@@ -81,10 +60,7 @@ public class ImageAdapter extends BaseAdapter {
         return imageView;
     }
 
-    // references to our images
-    String[] mThumbIds = stringArray();
-
-    public String[] stringArray(){
+     public String[] stringArray(){
      String[] returnArray = new String[100];
         Arrays.fill(returnArray, "http://i.imgur.com/DvpvklR.png");
         return returnArray;

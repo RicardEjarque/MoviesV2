@@ -1,7 +1,10 @@
 package app.com.example.ricard.moviesv2;
 
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 
 /**
  * Created by Ricard on 25/04/2017.
@@ -21,5 +24,9 @@ public class MainActivity extends AppCompatActivity {
                     .commit();
         }
 
+        PreferenceManager.setDefaultValues(this, R.xml.pref_general, true);
+        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+        String sortOrder = sharedPref.getString("Sort_by","1");
+        Log.e(LOG_TAG, sortOrder);
     }
 }
